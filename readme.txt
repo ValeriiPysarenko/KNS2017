@@ -1,0 +1,1 @@
+Valerii Pysarenko, variant 14
