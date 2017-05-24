@@ -1,0 +1,20 @@
+package eva2.examples;
+
+import eva2.OptimizerFactory;
+import eva2.problems.F1Problem;
+
+public class TestingF1PSO {
+
+    public static void main(String[] args) {
+        F1Problem f1 = new F1Problem();
+        // start a GA with a runtime of 50000 evaluations
+        OptimizerFactory.setEvaluationTerminator(50000);
+        double[] sol = OptimizerFactory.optimizeToDouble(OptimizerFactory.standardES(f1)); //Optimize Factory- тип оптимізації
+        System.out.println(OptimizerFactory.terminatedBecause() + "\nFoun	d solution: ");
+        for (int i = 0; i < f1.getProblemDimension(); i++) {
+            System.out.print(sol[i] + " ");
+        }
+
+        System.out.println();
+    }
+}
