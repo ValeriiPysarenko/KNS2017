@@ -1,0 +1,270 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Text;
+using System.Windows.Forms;
+using System.Threading;
+using System.IO;
+using System.Globalization;
+
+namespace Tsp
+{
+    public partial class TspForm : Form
+    {
+        Cities cityList = new Cities();
+        
+        Tsp tsp;
+        
+        Image cityImage;
+        
+        Graphics cityGraphics;
+
+        
+        public delegate void DrawEventHandler(Object sender, TspEventArgs e);
+
+        public TspForm()
+        {
+            InitializeComponent();
+        }
+        
+        private void tsp_foundNewBestTour(object sender, TspEventArgs e)
+        {
+            if ( this.InvokeRequired )
+            {
+                try
+                {
+                    this.Invoke(new DrawEventHandler(DrawTour), new object[] { sender, e });
+                    return;
+                }
+                catch (Exception)
+                {
+                    
+                }
+            }
+
+            DrawTour(sender, e);
+        }
+
+        public void DrawTour(object sender, TspEventArgs e)
+        {
+            this.lastFitnessValue.Text = Math.Round(e.BestTour.Fitness, 2).ToString(CultureInfo.CurrentCulture);
+            this.lastIterationValue.Text = e.Generation.ToString(CultureInfo.CurrentCulture);
+
+            if (cityImage == null)
+            {
+                cityImage = new Bitmap(tourDiagram.Width, tourDiagram.Height);
+                cityGraphics = Graphics.FromImage(cityImage);
+            }
+
+            int lastCity = 0;
+            int nextCity = e.BestTour[0].Connection1;
+
+            cityGraphics.FillRectangle(Brushes.White, 0, 0, cityImage.Width, cityImage.Height);
+            foreach( City city in e.CityList )
+            {
+                cityGraphics.DrawEllipse(Pens.Black, city.Location.X - 2, city.Location.Y - 2, 5, 5);
+                
+                cityGraphics.DrawLine(Pens.Black, cityList[lastCity].Location, cityList[nextCity].Location);
+                
+                if (lastCity != e.BestTour[nextCity].Connection1)
+                {
+                    lastCity = nextCity;
+                    nextCity = e.BestTour[nextCity].Connection1;
+                }
+                else
+                {
+                    lastCity = nextCity;
+                    nextCity = e.BestTour[nextCity].Connection2;
+                }
+            }
+
+            this.tourDiagram.Image = cityImage;
+
+            if (e.Complete)
+            {
+                StartButton.Text = "Begin";
+                StatusLabel.Text = "Open a City List or click the map to place cities.";
+                StatusLabel.ForeColor = Color.Black;
+            }
+        }
+        
+        private void DrawCityList(Cities cityList)
+        {
+            Image cityImage = new Bitmap(tourDiagram.Width, tourDiagram.Height);
+            Graphics graphics = Graphics.FromImage(cityImage);
+
+            foreach (City city in cityList)
+            {
+                graphics.DrawEllipse(Pens.Black, city.Location.X - 2, city.Location.Y - 2, 5, 5);
+            }
+
+            this.tourDiagram.Image = cityImage;
+
+            updateCityCount();
+        }
+        
+        private void StartButton_Click(object sender, EventArgs e)
+        {
+            if (tsp != null)
+            {
+                tsp.Halt = true;
+                return;
+            }
+
+            int populationSize = 0;
+            int maxGenerations = 0;
+            int mutation = 0;
+            int groupSize = 0;
+            int numberOfCloseCities = 0;
+            int chanceUseCloseCity = 0;
+            int seed = 0;
+
+            try
+            {
+                populationSize = Convert.ToInt32(populationSizeTextBox.Text, CultureInfo.CurrentCulture);
+                maxGenerations = Convert.ToInt32(maxGenerationTextBox.Text, CultureInfo.CurrentCulture);
+                mutation = 3;// Convert.ToInt32(mutationTextBox.Text, CultureInfo.CurrentCulture);
+                groupSize = 5;// Convert.ToInt32(groupSizeTextBox.Text, CultureInfo.CurrentCulture);
+                numberOfCloseCities = 5;// Convert.ToInt32(NumberCloseCitiesTextBox.Text, CultureInfo.CurrentCulture);
+                chanceUseCloseCity = 90;//Convert.ToInt32(CloseCityOddsTextBox.Text, CultureInfo.CurrentCulture);
+                seed = 0;// Convert.ToInt32(randomSeedTextBox.Text, CultureInfo.CurrentCulture);
+            }
+            catch (FormatException)
+            {
+            }
+
+            if (populationSize <= 0)
+            {
+                MessageBox.Show("You must specify a Population Size", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1 ,MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+            if (maxGenerations <= 0)
+            {
+                MessageBox.Show("You must specify a Maximum Number of Generations", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+            if ((mutation < 0) || (mutation > 100))
+            {
+                MessageBox.Show("Mutation must be between 0 and 100.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+            if ((groupSize < 2) || ( groupSize > populationSize ))
+            {
+                MessageBox.Show("You must specify a Group (Neighborhood) Size between 2 and the population size.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+            if ((numberOfCloseCities < 3) || (numberOfCloseCities >= cityList.Count))
+            {
+                MessageBox.Show("The number of nearby cities to evaluate for the greedy initial populations must be more than 3 and less than the total number of cities.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+            if ((chanceUseCloseCity < 0) || (chanceUseCloseCity > 95))
+            {
+                MessageBox.Show("The odds of using a nearby city when creating the initial population must be between 0% - 95%.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+            if (seed < 0)
+            {
+                MessageBox.Show("You must specify a Seed for the Random Number Generator", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+            if (cityList.Count < 5)
+            {
+                MessageBox.Show("You must either load a City List file, or click the map to place at least 5 cities. ", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+                return;
+            }
+
+            this.StartButton.Text = "Stop";
+            ThreadPool.QueueUserWorkItem( new WaitCallback(BeginTsp));
+        }
+        
+        private void BeginTsp(Object stateInfo)
+        {
+            int populationSize = Convert.ToInt32(populationSizeTextBox.Text, CultureInfo.CurrentCulture);
+            int maxGenerations = Convert.ToInt32(maxGenerationTextBox.Text, CultureInfo.CurrentCulture); ;
+            int mutation = 3;// Convert.ToInt32(mutationTextBox.Text, CultureInfo.CurrentCulture);
+            int groupSize = 5;// Convert.ToInt32(groupSizeTextBox.Text, CultureInfo.CurrentCulture);
+            int seed = 0;// Convert.ToInt32(randomSeedTextBox.Text, CultureInfo.CurrentCulture);
+            int numberOfCloseCities = 5;// Convert.ToInt32(NumberCloseCitiesTextBox.Text, CultureInfo.CurrentCulture);
+            int chanceUseCloseCity = 90;// Convert.ToInt32(CloseCityOddsTextBox.Text, CultureInfo.CurrentCulture);
+
+            cityList.CalculateCityDistances(numberOfCloseCities);
+
+            tsp = new Tsp();
+            tsp.foundNewBestTour += new Tsp.NewBestTourEventHandler(tsp_foundNewBestTour);
+            tsp.Begin(populationSize, maxGenerations, groupSize, mutation, seed, chanceUseCloseCity, cityList);
+            tsp.foundNewBestTour -= new Tsp.NewBestTourEventHandler(tsp_foundNewBestTour);
+            tsp = null;
+        }
+        
+        private void selectFileButton_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog fileOpenDialog = new OpenFileDialog();
+            fileOpenDialog.Filter = "XML(*.xml)|*.xml";
+            fileOpenDialog.InitialDirectory = ".";
+            fileOpenDialog.ShowDialog();
+            fileNameTextBox.Text = fileOpenDialog.FileName;
+        }
+        
+        private void openCityListButton_Click(object sender, EventArgs e)
+        {
+            string fileName = "";
+
+            try
+            {
+                if (tsp != null)
+                {
+                    StatusLabel.Text = "Cannot alter city list while running";
+                    StatusLabel.ForeColor = Color.Red;
+                    return;
+                }
+
+                fileName = this.fileNameTextBox.Text;
+                
+                cityList.OpenCityList(fileName);
+                DrawCityList(cityList);
+            }
+            catch (FileNotFoundException)
+            {
+                MessageBox.Show("File not found: " + fileName, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+            }
+            catch (InvalidCastException)
+            {
+                MessageBox.Show("Cities XML file is not valid", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+            }
+        }
+        
+        private void clearCityListButton_Click(object sender, EventArgs e)
+        {
+            if (tsp != null)
+            {
+                StatusLabel.Text = "Cannot alter city list while running";
+                StatusLabel.ForeColor = Color.Red;
+                return;
+            }
+
+            cityList.Clear();
+            this.DrawCityList(cityList);
+        }
+        
+        private void tourDiagram_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (tsp != null)
+            {
+                StatusLabel.Text = "Cannot alter city list while running";
+                StatusLabel.ForeColor = Color.Red;
+                return;
+            }
+
+            cityList.Add(new City(e.X, e.Y));
+            DrawCityList(cityList);
+        }
+        
+        private void updateCityCount()
+        {
+            this.NumberCitiesValue.Text = cityList.Count.ToString();
+        }
+    }
+}

@@ -1,0 +1,1 @@
+Rakochyi Taras Variant-15

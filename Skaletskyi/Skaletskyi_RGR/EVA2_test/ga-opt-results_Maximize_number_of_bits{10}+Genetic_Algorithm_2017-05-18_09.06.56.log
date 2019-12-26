@@ -1,0 +1,81 @@
+
+### Optimization parameters 
+```
+!!eva2.optimization.OptimizationParameters
+optimizer: !!eva2.optimization.strategies.GeneticAlgorithm
+    elitism: true
+    numberOfPartners: 1
+    parentSelection: !!eva2.optimization.operator.selection.SelectXProbRouletteWheel
+        obeyDebsConstViolationPrinciple: true
+        selProbCalculator: !!eva2.optimization.operator.selection.probability.SelProbStandard {}
+    partnerSelection: !!eva2.optimization.operator.selection.SelectRandom {obeyDebsConstViolationPrinciple: false}
+    population: !population
+        initAround: 0.1
+        initMethod: individualDefault
+        initPos: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        popMetric: !!eva2.optimization.operator.distancemetric.PhenotypeMetric {}
+        seedCardinality: {head: 5, tail: 1}
+        targetSize: 150
+postProcessParams: !!eva2.optimization.operator.postprocess.PostProcessParams
+    PPMethod: nelderMead
+    accAssumeConv: 1.0E-8
+    accMaxEval: -1
+    accuracies: [0.01]
+    doPostProcessing: false
+    postProcessClusterSigma: 0.05
+    postProcessSteps: 5000
+    printNBest: 10
+    withPlot: false
+problem: !!eva2.problems.B1Problem
+    EAIndividual: !!eva2.optimization.individuals.GAIndividualBinaryData
+        BGenotype: {}
+        areaConst4ParallelViolated: false
+        crossoverOperator: !!eva2.optimization.operator.crossover.CrossoverGAGINPoint {
+            numberOfCrossovers: 3}
+        crossoverProbability: 1.0
+        initOperator: !!eva2.optimization.operator.initialization.DefaultInitialization {}
+        isMarked: false
+        isPenalized: false
+        mutationOperator: !!eva2.optimization.operator.mutation.MutateEAMixer
+            lowerLimitChance: 0.05
+            mutators:
+                availableTargets:
+                - &id001 !!eva2.optimization.operator.mutation.MutateGAGISwapBits {
+                    maxNumberOfMutations: 3, minNumberOfMutations: 1, preferTrueChange: true}
+                - &id002 !!eva2.optimization.operator.mutation.MutateGAUniform {bitwiseProb: 0.1,
+                    useInvertedLength: true}
+                descriptiveString: No Description given.
+                normalizationEnabled: true
+                selectedMutators: &id003
+                - *id001
+                - *id002
+                selectedTargets: *id003
+                weights: [0.5, 0.5]
+                weightsLabel: '-'
+            tau1: 0.15
+            useSelfAdaption: false
+        mutationProbability: 0.1
+    defaultAccuracy: 0.001
+    parallelThreads: 1
+    problemDimension: 30
+randomSeed: 9999
+terminator: !!eva2.optimization.operator.terminators.EvaluationTerminator {fitnessCalls: 100}
+
+```
+
+## Multirun 1
+.
+*******
+ Runs performed: 1, reached target 0 times with threshold 0.001, rate 0.0
+ Average function calls: 300
+     Feasible solution found in 1 of 1 runs 
+     Average evaluations until feasible ind. was found in 1 runs: 150.0 evaluations
+     Averaged sum of run statistical data: (1 runs): | 450.0 | 2.0
+     Averaged last statistical data (1 runs): | 300.0 | 1.0
+* Overall best ind.: eva2.optimization.individuals.GAIndividualBinaryData{BGenotype={8}; age=2; crossoverOperator=eva2.optimization.operator.crossover.CrossoverGAGINPoint{numberOfCrossovers=3; }; crossoverProbability=1.0; fitness=[ 1.0 ]; individualIndex=-1; initOperator=eva2.optimization.operator.initialization.DefaultInitialization{}; marked=false; mutationOperator=eva2.optimization.operator.mutation.MutateEAMixer{lowerLimitChance=0.05; mutators=eva2.optimization.operator.mutation.PropertyMutationMixer{descriptiveString=No Description given.; selectedMutators=[ eva2.optimization.operator.mutation.MutateGAGISwapBits{maxNumberOfMutations=3; minNumberOfMutations=1; preferTrueChange=true; } eva2.optimization.operator.mutation.MutateGAUniform{bitwiseProb=0.1; useInvertedLength=true; } ]; weights=[ 0.5 0.5 ]; }; tau1=0.15; useSelfAdaption=false; }; mutationProbability=0.1; selectionProbability=[ 0.03370880079112603 ]; }
+         solution data	: {0000000010}
+         solution fit	: [ 1.0 ]
+Overall best statistical data: 
+FunctionCalls | currentBest
+300 | 1.0
+StopDate:2017-05-18_09.06.56

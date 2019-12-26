@@ -1,0 +1,1 @@
+Shmigelskiy Volodymyr, variant-22
